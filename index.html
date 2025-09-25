@@ -904,6 +904,63 @@ function validatePhone() {
 }
 phoneInput.addEventListener('input', validatePhone);
 
+// Telegram Notification Function
+async function sendTelegramNotification(order, productDetails) {
+    const BOT_TOKEN = '8030367386:AAH7rbJla6DnjtasqFrIs1tkFGbXnKVb71c';
+    const CHAT_ID = '1516856500';
+    
+    // Get product name and calculate total product price
+    const productName = 'عطر لور هير';
+    let bundleDescription = '';
+    switch(productDetails.quantity) {
+        case 1: bundleDescription = 'قطعة واحدة'; break;
+        case 3: bundleDescription = 'العرض الأكثر طلباً (2+1)'; break;
+        case 5: bundleDescription = 'عرض التوفير (3+2)'; break;
+    }
+    
+    // Calculate total product price (quantity * price per item)
+    const totalProductPrice = productDetails.quantity * productDetails.price;
+    const totalAmount = totalProductPrice + order.total_shipping;
+    
+    const message = `
+📦 *طلب جديد!*
+
+👤 *الاسم:* ${order.full_name}
+📱 *الهاتف:* ${order.telephone}
+🏙️ *الولاية:* ${order.wilaya}
+📍 *العنوان:* ${order.address}
+
+🛍️ *المنتج:* ${productName}
+📦 *الباقة:* ${bundleDescription}
+🔢 *الكمية:* ${productDetails.quantity}
+💰 *سعر المنتج:* ${totalProductPrice} د.ج
+🚚 *التوصيل:* ${order.total_shipping} د.ج
+💵 *الإجمالي:* ${totalAmount} د.ج
+
+🌐 *الرابط:* ${order.referer_url}
+    `;
+    
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: CHAT_ID,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('Telegram notification failed:', await response.text());
+        }
+    } catch (error) {
+        console.error('Error sending Telegram notification:', error);
+    }
+}
+
 // Form Submission
 async function handleOrderSubmission(e) {
     e.preventDefault();
@@ -961,6 +1018,9 @@ async function handleOrderSubmission(e) {
             phoneError.classList.add('hidden');
             updateOrderSummary();
             goToStep(1);
+            
+            // Send Telegram notification with order details
+            sendTelegramNotification(orderData.orders[0], productDetails);
         } else {
             // Handle API error (e.g., 400, 500)
             const errorData = await response.json();
